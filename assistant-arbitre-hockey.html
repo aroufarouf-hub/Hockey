@@ -302,6 +302,11 @@ header .badges .flag-ch{width:24px!important;height:24px!important}
       <div class="lbl"><b>Historique</b><small id="histCountHome">Aucun match enregistré</small></div>
       <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
     </button>
+    <button class="big" id="goImport">
+      <div class="lbl"><b>Importer un match</b><small>Depuis un PDF créé par l'application</small></div>
+      <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 18v-7M9 14l3-3 3 3"/></svg>
+    </button>
+    <input type="file" id="importFile" accept="application/pdf,.pdf" hidden>
     <button class="big" id="goStats" disabled aria-disabled="true">
       <div class="lbl"><b>Statistiques</b><small>Indisponible</small></div>
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
@@ -1158,25 +1163,28 @@ function buildPdf(m){
 
   /* Score */
   y=52;
-  doc.setDrawColor(LINE[0],LINE[1],LINE[2]);doc.setLineWidth(.3);doc.roundedRect(L,y,CW,18,3,3,'S');
-  doc.setFont('helvetica','bold');doc.setFontSize(13);col(INK);
-  doc.text(fit(m.teams[0],62),L+38,y+11.3,{align:'center'});
-  doc.text(fit(m.teams[1],62),Rr-38,y+11.3,{align:'center'});
-  doc.setFontSize(26);txt(s0+' - '+s1,W/2,y+12.5,{align:'center'});
+  doc.setDrawColor(LINE[0],LINE[1],LINE[2]);doc.setLineWidth(.3);doc.roundedRect(L,y,CW,22,3,3,'S');
+  doc.setFont('helvetica','bold');doc.setFontSize(24);col(INK);
+  doc.text(fit(m.teams[0],62),L+38,y+14,{align:'center'});
+  doc.text(fit(m.teams[1],62),Rr-38,y+14,{align:'center'});
+  txt(s0+' - '+s1,W/2,y+14,{align:'center'});
 
   /* Timeline */
-  y=78;
+  y=82;
   doc.setFont('helvetica','bold');doc.setFontSize(11);col(INK);txt('Timeline',L,y);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);col(MUT);
-  txt(m.teams[0]+' au-dessus · '+m.teams[1]+' en dessous',Rr,y,{align:'right'});
-  const BY=y+25;
+  const BY=y+29;
+  /* Noms des équipes : en haut (équipe 1) et en bas (équipe 2) */
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);col(INK);
+  fill(ACC);doc.rect(L,BY-26.6,1.2,3.6,'F');doc.text(fit(m.teams[0],80),L+2.6,BY-23.8);
+  fill(ACC);doc.rect(L,BY+26.4,1.2,3.6,'F');doc.text(fit(m.teams[1],80),L+2.6,BY+29.2);
+  doc.setFont('helvetica','normal');
   const X=e=>L+Math.min(1,(e.period*PD+Math.min(e.pe,PD))/TOT)*CW;
   for(let i=0;i<P;i++){
     const x0=L+i/P*CW,x1=L+(i+1)/P*CW;
     doc.setFillColor(i%2?226:236,i%2?232:241,i%2?240:246);doc.rect(x0,BY-2,x1-x0,4,'F');
     doc.setDrawColor(MUT[0],MUT[1],MUT[2]);doc.setLineWidth(.3);doc.line(x0,BY-3.5,x0,BY+3.5);
     col(MUT);doc.setFontSize(7.5);txt(plabel(i,m.cfg),x0+2,BY+1,{baseline:'middle'});
-    txt(Math.round(i*m.cfg.min*10)/10+"'",x0,BY+24,{align:'center'});
+    txt(Math.round(i*m.cfg.min*10)/10+"'",x0,BY+24,{align:i?'center':'left'});
   }
   doc.line(Rr,BY-3.5,Rr,BY+3.5);txt(Math.round(P*m.cfg.min*10)/10+"'",Rr,BY+24,{align:'center'});
   const rows=[[],[]];
@@ -1190,7 +1198,7 @@ function buildPdf(m){
     icon(e,x,my,1.3);
     col(INK);doc.setFontSize(6.5);txt(minute(e)+"'",x+2.4,my+1);
   });
-  let ly=BY+30,lx=L;doc.setFontSize(7.5);col(MUT);
+  let ly=BY+36,lx=L;doc.setFontSize(7.5);col(MUT);
   const leg=(e,label)=>{icon(e,lx+1.2,ly-.9,1);txt(label,lx+3.5,ly);lx+=doc.getTextWidth(label)+9};
   leg({type:'goal'},'But');leg({type:'card',color:'green'},'Carton vert');leg({type:'card',color:'yellow'},'Carton jaune');
   leg({type:'card',color:'red'},'Carton rouge');leg({type:'pc'},'Penalty corner');leg({type:'stop'},'Arrêt de jeu');
@@ -1250,8 +1258,15 @@ function buildPdf(m){
   doc.setFontSize(7.5);col(MUT);doc.setFont('helvetica','normal');
   txt('Généré le '+fmtDate(Date.now()).replace(' · ',' à '),L,290.5);
   txt('© 2026 Louis Rouvez · Assistant arbitre hockey',Rr,290.5,{align:'right'});
+  /* Données du match intégrées (pour « Importer un match ») */
+  try{
+    const data={v:1,id:m.id||('imp-'+m.created+'-'+m.teams.join('-')),cat:m.cat,created:m.created,ended:m.ended||Date.now(),teams:m.teams,meta:m.meta||null,cfg:m.cfg,events:m.events,period:m.period,game:m.game};
+    doc.setProperties({title:'Feuille de match '+m.teams[0]+' - '+m.teams[1],author:'Assistant arbitre hockey',creator:'Assistant arbitre hockey',keywords:'AAH1:'+b64enc(JSON.stringify(data))});
+  }catch(e){}
   return doc;
 }
+function b64enc(str){const u=new TextEncoder().encode(str);let b='';for(let i=0;i<u.length;i+=8192)b+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(b)}
+function b64dec(b64){const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new TextDecoder().decode(u)}
 function pdfName(m){
   const d=new Date(m.created);
   return ('Feuille_match_'+(m.cat&&m.cat!=='—'?m.cat+'_':'')+m.teams[0]+'_'+m.teams[1]+'_'+pad2(d.getDate())+'.'+pad2(d.getMonth()+1)+'.'+d.getFullYear()).replace(/\s+/g,'-').replace(/[^\w.\-àâäéèêëîïôöùûüç]/gi,'')+'.pdf';
@@ -1321,6 +1336,24 @@ $('pdfSave').onclick=async()=>{
 };
 $('pdfMatch').onclick=()=>{if(!S)return;commit();save();openPdf(Object.assign({},S,{game:cur().g}),'match')};
 $('pdfDetail').onclick=()=>{const m=D.history.find(x=>x.id===detailId);if(m)openPdf(m,'detail')};
+
+/* Importer un match depuis un PDF de l'application */
+$('goImport').onclick=()=>{$('importFile').value='';$('importFile').click()};
+$('importFile').onchange=async()=>{
+  const f=$('importFile').files[0];if(!f)return;
+  try{
+    const buf=new Uint8Array(await f.arrayBuffer());
+    let raw='';for(let i=0;i<buf.length;i+=8192)raw+=String.fromCharCode.apply(null,buf.subarray(i,i+8192));
+    const mm=raw.match(/AAH1:([A-Za-z0-9+\/=]+)/);
+    if(!mm){toast('Ce PDF ne contient pas les données d\'un match. Seuls les PDF créés par l\'application (version actuelle) peuvent être importés.');return}
+    const d=JSON.parse(b64dec(mm[1]));
+    if(!d||!Array.isArray(d.teams)||!Array.isArray(d.events)||!d.cfg){toast('Les données du match sont illisibles.');return}
+    if(D.history.some(x=>x.id===d.id)){toast('Ce match est déjà dans l\'historique.');detailId=d.id;show('detail');return}
+    const rec={id:d.id,cat:d.cat,created:d.created,ended:d.ended,teams:d.teams,meta:d.meta,cfg:d.cfg,events:d.events,period:d.period,game:d.game,imported:Date.now()};
+    D.history.push(rec);D.history.sort((a,b)=>b.created-a.created);save();
+    toast('Match importé dans l\'historique.');detailId=rec.id;show('detail');
+  }catch(e){toast('Import impossible : fichier illisible.')}
+};
 
 /* Logos et copyright sur toutes les pages */
 (function(){
