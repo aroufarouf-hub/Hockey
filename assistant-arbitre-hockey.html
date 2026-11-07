@@ -49,6 +49,16 @@ header .title span{color:var(--muted);font-weight:500}
 
 /* Accueil */
 .hero{padding-block:28px 8px;display:flex;flex-direction:column;gap:6px}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.badges{display:flex;align-items:center;gap:8px;flex:none}
+.badges svg{width:40px;height:40px;display:block}
+.flag-ch{width:34px!important;height:34px!important;box-shadow:0 1px 3px rgba(0,0,0,.2);border-radius:3px}
+header .badges{gap:5px}
+header .badges .logo-hockey{width:28px;height:28px}
+header .badges .flag-ch{width:24px!important;height:24px!important}
+.lh-bg{fill:var(--accent)}
+.lh-stick{fill:none;stroke:var(--accent-fg);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.lh-ball{fill:var(--accent-fg)}
 .hero .kicker{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);font-weight:600}
 .hero h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(48px,15vw,72px);line-height:.92;text-transform:uppercase;text-wrap:balance}
 .hero h1 em{font-style:normal;color:var(--accent)}
@@ -258,7 +268,13 @@ header .title span{color:var(--muted);font-weight:500}
 <!-- ACCUEIL -->
 <main class="screen" id="scr-home">
   <div class="hero">
-    <div class="kicker">Hockey sur gazon · arbitrage</div>
+    <div class="hero-top">
+      <div class="kicker">Hockey sur gazon · arbitrage</div>
+      <div class="badges">
+        <svg class="logo-hockey" viewBox="0 0 40 40" role="img" aria-label="Hockey sur gazon"><circle cx="20" cy="20" r="19" class="lh-bg"/><path d="M11 7 L24.5 28.5 Q27 32.5 31 30.5" class="lh-stick"/><path d="M29 7 L15.5 28.5 Q13 32.5 9 30.5" class="lh-stick"/><circle cx="20" cy="33" r="2.6" class="lh-ball"/></svg>
+        <svg class="flag-ch" viewBox="0 0 32 32" role="img" aria-label="Suisse"><rect width="32" height="32" rx="3" fill="#DA291C"/><rect x="13" y="6" width="6" height="20" fill="#FFFFFF"/><rect x="6" y="13" width="20" height="6" fill="#FFFFFF"/></svg>
+      </div>
+    </div>
     <h1>Assistant arbitre <em>hockey</em></h1>
   </div>
   <div class="field-lines" aria-hidden="true"></div>
@@ -1102,7 +1118,21 @@ function buildPdf(m){
   doc.setFont('helvetica','bold');doc.setFontSize(20);col(INK);txt('Feuille de match',L,18);
   doc.setFont('helvetica','normal');doc.setFontSize(11);col(MUT);
   txt([m.cat&&m.cat!=='—'?m.cat:null,meta.sexe,meta.tournoi].filter(Boolean).join(' · '),L,25);
-  txt(fmtDate(m.created),Rr,18,{align:'right'});
+  /* Logos */
+  (function(){
+    const sz=11,fx=Rr-sz,fy=8;
+    doc.setFillColor(218,41,28);doc.roundedRect(fx,fy,sz,sz,1,1,'F');
+    doc.setFillColor(255,255,255);const u=sz/32;doc.rect(fx+13*u,fy+6*u,6*u,20*u,'F');doc.rect(fx+6*u,fy+13*u,20*u,6*u,'F');
+    const hs=12,hx=fx-3-hs,hy=fy-.5,k=hs/40;
+    doc.setFillColor(ACC[0],ACC[1],ACC[2]);doc.circle(hx+20*k,hy+20*k,19*k,'F');
+    doc.setDrawColor(255,255,255);doc.setLineWidth(2.6*k);doc.setLineCap('round');doc.setLineJoin('round');
+    doc.line(hx+11*k,hy+7*k,hx+24.5*k,hy+28.5*k);doc.lines([[1.67*k,2.67*k,3.83*k,3.33*k,6.5*k,2*k]],hx+24.5*k,hy+28.5*k,[1,1],'S',false);
+    doc.line(hx+29*k,hy+7*k,hx+15.5*k,hy+28.5*k);doc.lines([[-1.67*k,2.67*k,-3.83*k,3.33*k,-6.5*k,2*k]],hx+15.5*k,hy+28.5*k,[1,1],'S',false);
+    doc.setFillColor(255,255,255);doc.circle(hx+20*k,hy+33*k,2.6*k,'F');
+    doc.setLineCap('butt');doc.setLineJoin('miter');
+  })();
+  doc.setFont('helvetica','normal');doc.setFontSize(11);col(MUT);
+  txt(fmtDate(m.created),Rr,25,{align:'right'});
 
   /* Score */
   let y=36;
@@ -1204,7 +1234,7 @@ function buildPdf(m){
   /* Pied de page */
   const n=doc.getNumberOfPages();
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);col(MUT);
-    txt('Généré le '+fmtDate(Date.now()).replace(' · ',' à '),L,290);txt('Page '+i+' / '+n,Rr,290,{align:'right'})}
+    txt('Généré le '+fmtDate(Date.now()).replace(' · ',' à '),L,290);txt('© 2026 Louis Rouvez · Assistant arbitre hockey',W/2,290,{align:'center'});txt('Page '+i+' / '+n,Rr,290,{align:'right'})}
   return doc;
 }
 function pdfName(m){
@@ -1276,6 +1306,17 @@ $('pdfSave').onclick=async()=>{
 };
 $('pdfMatch').onclick=()=>{if(!S)return;commit();save();openPdf(Object.assign({},S,{game:cur().g}),'match')};
 $('pdfDetail').onclick=()=>{const m=D.history.find(x=>x.id===detailId);if(m)openPdf(m,'detail')};
+
+/* Logos et copyright sur toutes les pages */
+(function(){
+  const src=document.querySelector('#scr-home .badges');
+  document.querySelectorAll('main.screen').forEach(m=>{
+    if(m.id==='scr-home')return;
+    const h=m.querySelector('header');
+    if(h){const b=src.cloneNode(true);const t=h.querySelector('.title');t.after(b)}
+    const f=document.createElement('footer');f.className='copy';f.textContent='© 2026 Louis Rouvez';m.appendChild(f);
+  });
+})();
 
 show('home');
 function renderPc(){
